@@ -1,0 +1,12 @@
+target/
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+sa-key.json
+*-credentials.json
+gcp-credentials.json
+.env
+*.env
+.DS_Store
+.idea/
+*.iml
