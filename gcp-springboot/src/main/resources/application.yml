@@ -7,21 +7,39 @@ spring:
       project-id: ${GCP_PROJECT_ID:your-gcp-project-id}
       credentials:
         location: ${GOOGLE_APPLICATION_CREDENTIALS:classpath:gcp-credentials.json}
-
-      # Pub/Sub
       pubsub:
-        emulator-host: ${PUBSUB_EMULATOR_HOST:}   # leave blank in prod
-
-      # Spanner
+        emulator-host: ${PUBSUB_EMULATOR_HOST:}
       spanner:
         instance-id: ${SPANNER_INSTANCE_ID:my-instance}
         database: ${SPANNER_DATABASE:my-database}
 
-# GCS bucket name (injected via Secret Manager or env var)
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      client-id: gcp-springboot-producer
+    consumer:
+      group-id: gcp-springboot-group
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      concurrency: 3
+    admin:
+      auto-create: true
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${JWT_JWK_SET_URI:https://www.googleapis.com/oauth2/v3/certs}
+
 gcs:
   bucket-name: ${GCS_BUCKET_NAME:my-gcs-bucket}
 
-# Pub/Sub topic and subscription names
 pubsub:
   topic:
     orders: orders-topic
@@ -30,10 +48,75 @@ pubsub:
     orders: orders-subscription
     notifications: notifications-subscription
 
+kafka:
+  topics:
+    partitions: 3
+    replicas: 3
+
+audit:
+  gcs:
+    prefix: audit
+  flush:
+    interval-ms: 30000
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      spannerCB:
+        register-health-indicator: true
+        sliding-window-size: 20
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+      gcsCB:
+        register-health-indicator: true
+        failure-rate-threshold: 60
+        wait-duration-in-open-state: 15s
+  retry:
+    instances:
+      kafkaRetry:
+        max-attempts: 3
+        wait-duration: 500ms
+      spannerRetry:
+        max-attempts: 4
+        wait-duration: 200ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,circuitbreakers
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  health:
+    circuitbreakers:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      environment: ${APP_ENV:local}
+    export:
+      prometheus:
+        enabled: true
+
 server:
   port: 8080
+  compression:
+    enabled: true
+    mime-types: application/json
+  error:
+    include-message: always
+    include-binding-errors: always
 
 logging:
   level:
     com.navya.gcp: DEBUG
     com.google.cloud: INFO
+    org.apache.kafka: WARN
+    org.springframework.security: INFO
+  pattern:
+    console: "%d{ISO8601} [%thread] [%X{correlationId}] %-5level %logger{36} - %msg%n"
