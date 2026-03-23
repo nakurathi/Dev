@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: gcp-springboot
+
+  cloud:
+    gcp:
+      project-id: ${GCP_PROJECT_ID:your-gcp-project-id}
+      credentials:
+        location: ${GOOGLE_APPLICATION_CREDENTIALS:classpath:gcp-credentials.json}
+
+      # Pub/Sub
+      pubsub:
+        emulator-host: ${PUBSUB_EMULATOR_HOST:}   # leave blank in prod
+
+      # Spanner
+      spanner:
+        instance-id: ${SPANNER_INSTANCE_ID:my-instance}
+        database: ${SPANNER_DATABASE:my-database}
+
+# GCS bucket name (injected via Secret Manager or env var)
+gcs:
+  bucket-name: ${GCS_BUCKET_NAME:my-gcs-bucket}
+
+# Pub/Sub topic and subscription names
+pubsub:
+  topic:
+    orders: orders-topic
+    notifications: notifications-topic
+  subscription:
+    orders: orders-subscription
+    notifications: notifications-subscription
+
+server:
+  port: 8080
+
+logging:
+  level:
+    com.navya.gcp: DEBUG
+    com.google.cloud: INFO
